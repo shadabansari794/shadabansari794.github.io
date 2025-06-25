@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Quran Verse Similarity Search</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h2 {
+      color: #2c3e50;
+    }
+    select {
+      padding: 8px;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 8px 16px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    .verse-box {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-left: 4px solid #3498db;
+    }
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    li {
+      padding: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .score {
+      color: #7f8c8d;
+      font-size: 0.9em;
+    }
+    .loading {
+      text-align: center;
+      margin: 20px 0;
+    }
+    #currentVerse {
+      display: none;
+      margin-top: 20px;
+    }
+    .filter-section {
+      background-color: #f8f9fa;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+    }
+    .filter-row {
+      margin-bottom: 15px;
+    }
+    .filter-label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+    }
+    .radio-options {
+      margin-top: 10px;
+    }
+    .radio-option {
+      margin-right: 15px;
+    }
+    .arabic-text {
+      font-size: 1.2em;
+      direction: rtl;
+      text-align: right;
+      margin-top: 10px;
+      font-family: "Traditional Arabic", serif;
+    }
+  </style>
+</head>
+<body>
+  <h2>🔍 Quran Verse Similarity Search</h2>
+  
+  <div class="filter-section">
+    <div class="filter-row">
+      <span class="filter-label">1. Select Surah:</span>
+      <select id="surahSelector" onchange="loadVerses()">
+        <option value="">-- Select a Surah --</option>
+      </select>
+    </div>
+    
+    <div class="filter-row">
+      <span class="filter-label">2. Select Verse:</span>
+      <select id="verseSelector" disabled>
+        <option value="">-- Select a Surah first --</option>
+      </select>
+    </div>
+    
+    <div class="filter-row">
+      <span class="filter-label">3. Search Options:</span>
+      <div class="radio-options">
+        <label class="radio-option">
+          <input type="radio" name="surahFilter" value="all" checked> All Surahs
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="surahFilter" value="same"> Same Surah Only
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="surahFilter" value="different"> Different Surahs Only
+        </label>
+      </div>
+    </div>
+    
+    <div class="filter-row">
+      <span class="filter-label">4. Number of Results (Top K):</span>
+      <div style="display: flex; align-items: center;">
+        <input type="range" id="topKSelector" min="1" max="20" value="5" oninput="updateTopKValue()">
+        <span id="topKValue" style="margin-left: 10px;">5</span>
+      </div>
+    </div>
+    
+    <div class="filter-row">
+      <span class="filter-label">5. Minimum Score Threshold:</span>
+      <input type="number" id="scoreThreshold" min="0" max="1" step="0.01" value="0.5" style="width: 80px;">
+      <span style="font-size: 0.9em; color: #7f8c8d; margin-left: 10px;">(0 to 1, higher is more similar)</span>
+    </div>
+    
+    <button onclick="search()">Find Similar Verses</button>
+  </div>
+  
+  <div id="currentVerse" class="verse-box">
+    <h3>Selected Verse:</h3>
+    <p id="verseText"></p>
+  </div>
+  
+  <div id="loading" class="loading" style="display: none;">Searching for similar verses...</div>
+  
+  <div>
+    <h3>Similar Verses:</h3>
+    <ul id="results"></ul>
+  </div>
+
+  <script>
+    // Load surahs when page loads
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // Load all surahs
+        const surahRes = await fetch("http://localhost:8000/surahs");
+        const surahs = await surahRes.json();
+        
+        if (!Array.isArray(surahs)) {
+          console.error('Expected surahs to be an array, but got:', typeof surahs);
+          return;
+        }
+        
+        const surahSelector = document.getElementById("surahSelector");
+        surahs.forEach(surah => {
+          const option = document.createElement("option");
+          option.value = surah.surah_id;
+          option.text = `${surah.surah_id}. ${surah.surah_name}`;
+          surahSelector.appendChild(option);
+        });
+      } catch (error) {
+        console.error("Error loading surahs:", error);
+        document.getElementById("results").innerHTML = "<li>Error loading surahs. Make sure the API server is running.</li>";
+      }
+    });
+    
+    // Load verses for the selected surah
+    async function loadVerses() {
+      try {
+        const surahId = document.getElementById("surahSelector").value;
+        const verseSelector = document.getElementById("verseSelector");
+        
+        // Clear previous verses
+        verseSelector.innerHTML = '';
+        verseSelector.appendChild(new Option(surahId ? "-- Select a verse --" : "-- Select a Surah first --", ""));
+        
+        if (!surahId) {
+          verseSelector.disabled = true;
+          return;
+        }
+        
+        // Fetch verses for this surah
+        const res = await fetch(`http://localhost:8000/verses?surah_id=${surahId}`);
+        const verses = await res.json();
+        
+        if (!Array.isArray(verses)) {
+          console.error('Expected verses to be an array, but got:', typeof verses);
+          return;
+        }
+        
+        // Enable the verse selector
+        verseSelector.disabled = false;
+        
+        // Add the verses to the selector
+        verses.forEach(verse => {
+          const option = document.createElement("option");
+          option.value = verse.id;
+          option.text = `${verse.verse_id}. ${verse.text_preview}`;
+          option.setAttribute('data-text', verse.text);
+          option.setAttribute('data-translation', verse.translation);
+          verseSelector.appendChild(option);
+        });
+      } catch (error) {
+        console.error("Error loading verses:", error);
+        document.getElementById("results").innerHTML = "<li>Error loading verses. Make sure the API server is running.</li>";
+      }
+    }
+
+    // Function to update the Top K value display
+    function updateTopKValue() {
+      document.getElementById("topKValue").textContent = document.getElementById("topKSelector").value;
+    }
+    
+    // Search for similar verses
+    async function search() {
+      const verseId = document.getElementById("verseSelector").value;
+      if (!verseId) {
+        document.getElementById("results").innerHTML = "<li>Please select a verse.</li>";
+        return;
+      }
+      
+      // Get the filter options
+      const filterValue = document.querySelector('input[name="surahFilter"]:checked').value;
+      const sameSurah = filterValue === 'same';
+      const differentSurah = filterValue === 'different';
+      const topK = parseInt(document.getElementById("topKSelector").value);
+      const scoreThreshold = parseFloat(document.getElementById("scoreThreshold").value);
+      
+      document.getElementById("loading").style.display = "block";
+      const res = await fetch("http://localhost:8000/search", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          verse_id: verseId,
+          top_k: topK,
+          same_surah_only: sameSurah,
+          different_surah_only: differentSurah
+        })
+      });
+      const data = await res.json();
+      
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("currentVerse").style.display = "block";
+      
+      // Display the selected verse
+      const selectedOption = document.querySelector(`#verseSelector option[value="${verseId}"]`);
+      const translation = selectedOption.getAttribute('data-translation');
+      const arabicText = selectedOption.getAttribute('data-text');
+      
+      let verseText = `<div><b>${document.getElementById("surahSelector").options[document.getElementById("surahSelector").selectedIndex].text}, Verse ${selectedOption.text.split('.')[0]}</b></div>`;
+      verseText += `<div class="arabic-text">${arabicText}</div>`;
+      verseText += `<div>${translation}</div>`;
+      document.getElementById("verseText").innerHTML = verseText;
+      
+      // Display the results
+      if (data.length === 0) {
+        document.getElementById("results").innerHTML = "<li>No similar verses found with the current filters.</li>";
+        return;
+      }
+      
+      // Filter results by score threshold
+      const filteredData = data.filter(d => d.score >= scoreThreshold);
+      
+      if (filteredData.length === 0) {
+        document.getElementById("results").innerHTML = "<li>No verses found with similarity score above the threshold.</li>";
+        return;
+      }
+      
+      const resultsHtml = filteredData.map(d => {
+        return `
+          <li>
+            <b>Surah ${d.surah_name}, Verse ${d.verse_id}</b> <i class="score">(score: ${d.score.toFixed(4)})</i>
+            <div class="arabic-text">${d.text}</div>
+            <div>${d.translation}</div>
+          </li>
+        `;
+      }).join('');
+      document.getElementById("results").innerHTML = resultsHtml;
+    }
+  </script>
+</body>
+</html>
