@@ -1,55 +1,99 @@
 # Quran Verse Semantic Search
 
-This project provides a semantic search engine for finding similar verses in the Quran based on meaning rather than just keywords.
+A modern semantic search engine for exploring the Quran based on meaning rather than just keywords. This application allows users to find verses with similar semantic content using natural language queries.
 
-## Features
+## 🌟 Features
 
-- Extract verses from a Quran PDF file
-- Generate semantic embeddings using an open-source model
-- Find similar verses using cosine similarity
-- Interactive command-line search interface
+- **Semantic Search**: Find verses based on meaning using embedding vectors
+- **Web Interface**: User-friendly frontend for easy interaction
+- **API Backend**: FastAPI-powered backend with efficient search capabilities
+- **Pre-processed Data**: Includes extracted verses and pre-computed embeddings
 
-## Setup
+## 🔧 Technologies Used
 
-1. Install the required dependencies:
+- **Backend**: Python, FastAPI
+- **Embeddings**: Sentence Transformers with all-MiniLM-L6-v2 model
+- **Frontend**: HTML, CSS, JavaScript
+- **Data Processing**: PDF extraction, NumPy for vector operations
+
+## 📋 Requirements
+
+- Python 3.7+
+- Node.js (for serving the frontend)
+- Dependencies listed in `requirements.txt`
+
+## 🚀 Getting Started
+
+### Backend Setup
+
+1. Create and activate a virtual environment:
+
+```bash
+python -m venv venv
+# On Windows
+venv\Scripts\activate
+# On macOS/Linux
+source venv/bin/activate
+```
+
+2. Install the required dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Extract verses from the PDF:
+3. Process the Quran data and generate embeddings:
 
 ```bash
-python extract_verses.py
+python quran_index.py
 ```
 
-3. Run the semantic search:
+4. Start the FastAPI server:
 
 ```bash
-python quran_search.py
+uvicorn app:app --reload
 ```
 
-## Usage
+### Frontend Setup
 
-1. When you run `quran_search.py`, you'll be prompted to enter your query.
-2. Type any text or verse fragment and press Enter.
-3. The system will display the top 5 most semantically similar verses.
-4. Type 'exit' to quit the program.
+1. Install the serve package (if not already installed):
 
-## How It Works
+```bash
+npm install -g serve
+```
 
-The system uses the `sentence-transformers` library with the `all-MiniLM-L6-v2` model, which is a lightweight but effective open-source embedding model. This model converts text into high-dimensional vectors such that semantically similar texts have vectors close to each other.
+2. Serve the frontend files:
 
-The search process works as follows:
+```bash
+serve .
+```
 
-1. Each verse in the Quran is converted to an embedding vector
-2. Your query is also converted to an embedding vector
-3. Cosine similarity is calculated between your query and all verses
-4. The verses with the highest similarity scores are returned
+3. Open your browser and navigate to the displayed URL (typically http://localhost:3000)
 
-## Files
+## 💡 How It Works
+
+The search system operates through these steps:
+
+1. **Data Processing**: Each verse in the Quran is converted to an embedding vector using the Sentence Transformers model
+2. **Query Processing**: User search queries are converted to the same vector space
+3. **Similarity Calculation**: Cosine similarity is calculated between the query and all verses
+4. **Result Ranking**: Verses with the highest similarity scores are returned as search results
+
+## 📁 Project Structure
 
 - `extract_verses.py`: Script to extract verses from the Quran PDF
-- `quran_search.py`: Main script for semantic search
-- `quran_verses.json`: JSON file containing extracted verses (created by extract_verses.py)
-- `quran_embeddings.npy`: NumPy file containing pre-computed embeddings (created by quran_search.py)
+- `quran_index.py`: Script for generating and storing verse embeddings
+- `app.py`: FastAPI backend application
+- `quran_verses.json`: JSON file containing extracted verses
+- `quran_embeddings.npy`: NumPy file containing pre-computed embeddings
+- `index.html`: Frontend application interface
+
+## 📝 Usage
+
+1. Enter your search query in the text box
+2. View the matching verses ranked by semantic similarity
+3. Explore different phrasings to discover related concepts in the Quran
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
