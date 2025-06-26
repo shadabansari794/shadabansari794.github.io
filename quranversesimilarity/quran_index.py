@@ -35,7 +35,7 @@ index = faiss.IndexFlatIP(dimension)
 index.add(embeddings)
 
 # Step 5: Save index and metadata
-faiss.write_index(index, "data/quran_faiss_index.index")
+faiss.write_index(index, "quran_faiss_index.index")
 df_meta = pd.DataFrame(metadata)
-df_meta.to_pickle("data/quran_verse_metadata.pkl")
+df_meta.to_pickle("quran_verse_metadata.pkl")
 print("✅ Index and metadata saved.")

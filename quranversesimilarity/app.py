@@ -8,8 +8,8 @@ import numpy as np
 from typing import List, Optional
 
 # Load index and metadata only (no model needed)
-index = faiss.read_index("data/quran_faiss_index.index")
-df_meta = pd.read_pickle("data/quran_verse_metadata.pkl")
+index = faiss.read_index("quran_faiss_index.index")
+df_meta = pd.read_pickle("quran_verse_metadata.pkl")
 
 # Create a mapping of verse IDs to their index in the dataframe for quick lookup
 verse_id_map = {}
