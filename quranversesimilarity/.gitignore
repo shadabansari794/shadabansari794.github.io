@@ -45,5 +45,10 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
+# Allow specific data files we want to track
+!data/quran_faiss_index.index
+!data/quran_verse_metadata.pkl
+
+# But still ignore other index/pkl files
 data/*.index
 *.pkl
