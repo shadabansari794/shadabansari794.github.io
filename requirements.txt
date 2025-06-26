@@ -6,3 +6,4 @@ sentence-transformers
 requests
 python-multipart
 jinja2
+gunicorn

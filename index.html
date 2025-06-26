@@ -146,12 +146,59 @@
   </div>
 
   <script>
+    // Define API base URL - try multiple options if the primary one fails
+    const API_URLS = [
+      'https://shadabansari794-github-io-1.onrender.com',
+      'https://quranversesimilarity.onrender.com',
+      'http://localhost:8000'  // Fallback for local development
+    ];
+    
+    let activeApiUrl = null;
+    
+    // Function to test API endpoints and find one that works
+    async function findWorkingApiUrl() {
+      for (const url of API_URLS) {
+        try {
+          const response = await fetch(`${url}/health`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            mode: 'cors'
+          });
+          
+          if (response.ok) {
+            console.log(`API found at: ${url}`);
+            return url;
+          }
+        } catch (error) {
+          console.log(`API at ${url} not available`);
+        }
+      }
+      return null;
+    }
+    
     // Load surahs when page loads
     document.addEventListener('DOMContentLoaded', async () => {
+      // Find a working API URL
+      activeApiUrl = await findWorkingApiUrl();
+      
+      if (!activeApiUrl) {
+        document.getElementById("results").innerHTML = 
+          "<li>Could not connect to any API server. Please check your network connection or try again later.</li>";
+        return;
+      }
       try {
         // Load all surahs
-        const surahRes = await fetch("https://shadabansari794-github-io-1.onrender.com/surahs");
-        const surahs = await surahRes.json();
+        const response = await fetch(`${activeApiUrl}/surahs`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          mode: 'cors',
+          credentials: 'omit'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const surahs = await response.json();
         
         if (!Array.isArray(surahs)) {
           console.error('Expected surahs to be an array, but got:', typeof surahs);
@@ -173,23 +220,49 @@
     
     // Load verses for the selected surah
     async function loadVerses() {
+      const surahSelector = document.getElementById("surahSelector");
+      const surahId = surahSelector.value;
+      const verseSelector = document.getElementById("verseSelector");
+      
+      // Clear the current verse selector
+      verseSelector.innerHTML = "";
+      verseSelector.disabled = true;
+      
+      if (!surahId) {
+        verseSelector.innerHTML = "<option value=''>-- Select a Surah first --</option>";
+        return;
+      }
+      
+      if (!activeApiUrl) {
+        verseSelector.innerHTML = "<option value=''>-- API not available --</option>";
+        document.getElementById("results").innerHTML = 
+          "<li>Could not connect to API server. Please refresh the page and try again.</li>";
+        return;
+      }
+      
+      const option = document.createElement("option");
+      option.value = "";
+      option.text = "Loading verses...";
+      verseSelector.appendChild(option);
+      
       try {
-        const surahId = document.getElementById("surahSelector").value;
-        const verseSelector = document.getElementById("verseSelector");
+        const response = await fetch(`${activeApiUrl}/verses?surah_id=${surahId}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          mode: 'cors',
+          credentials: 'omit'
+        });
         
-        // Clear previous verses
-        verseSelector.innerHTML = '';
-        verseSelector.appendChild(new Option(surahId ? "-- Select a verse --" : "-- Select a Surah first --", ""));
-        
-        if (!surahId) {
-          verseSelector.disabled = true;
-          return;
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
         }
         
-        // Fetch verses for this surah
-        const res = await fetch(`https://shadabansari794-github-io-1.onrender.com/verses?surah_id=${surahId}`);
-        const verses = await res.json();
+        const verses = await response.json();
         
+        // Clear the loading option
+        verseSelector.innerHTML = "<option value=''>-- Select a Verse --</option>";
+        
+        // Check if verses is an array
         if (!Array.isArray(verses)) {
           console.error('Expected verses to be an array, but got:', typeof verses);
           return;
@@ -233,56 +306,78 @@
       const topK = parseInt(document.getElementById("topKSelector").value);
       const scoreThreshold = parseFloat(document.getElementById("scoreThreshold").value);
       
+      if (!activeApiUrl) {
+        document.getElementById("results").innerHTML = 
+          "<li>Could not connect to API server. Please refresh the page and try again.</li>";
+        return;
+      }
+      
       document.getElementById("loading").style.display = "block";
-      const res = await fetch("https://shadabansari794-github-io-1.onrender.com/search", {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          verse_id: verseId,
-          top_k: topK,
-          same_surah_only: sameSurah,
-          different_surah_only: differentSurah
-        })
-      });
-      const data = await res.json();
       
-      document.getElementById("loading").style.display = "none";
-      document.getElementById("currentVerse").style.display = "block";
-      
-      // Display the selected verse
-      const selectedOption = document.querySelector(`#verseSelector option[value="${verseId}"]`);
-      const translation = selectedOption.getAttribute('data-translation');
-      const arabicText = selectedOption.getAttribute('data-text');
-      
-      let verseText = `<div><b>${document.getElementById("surahSelector").options[document.getElementById("surahSelector").selectedIndex].text}, Verse ${selectedOption.text.split('.')[0]}</b></div>`;
-      verseText += `<div class="arabic-text">${arabicText}</div>`;
-      verseText += `<div>${translation}</div>`;
-      document.getElementById("verseText").innerHTML = verseText;
-      
-      // Display the results
-      if (data.length === 0) {
-        document.getElementById("results").innerHTML = "<li>No similar verses found with the current filters.</li>";
+      try {
+        const res = await fetch(`${activeApiUrl}/search`, {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          mode: 'cors',
+          credentials: 'omit',
+          body: JSON.stringify({
+            verse_id: verseId,
+            top_k: topK,
+            same_surah_only: sameSurah,
+            different_surah_only: differentSurah
+          })
+        });
+        
+        if (!res.ok) {
+          throw new Error(`API error! Status: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("currentVerse").style.display = "block";
+        
+        // Display the selected verse
+        const selectedOption = document.querySelector(`#verseSelector option[value="${verseId}"]`);
+        const translation = selectedOption.getAttribute('data-translation');
+        const arabicText = selectedOption.getAttribute('data-text');
+        
+        let verseText = `<div><b>${document.getElementById("surahSelector").options[document.getElementById("surahSelector").selectedIndex].text}, Verse ${selectedOption.text.split('.')[0]}</b></div>`;
+        verseText += `<div class="arabic-text">${arabicText}</div>`;
+        verseText += `<div>${translation}</div>`;
+        document.getElementById("verseText").innerHTML = verseText;
+        
+        // Display the results
+        if (data.length === 0) {
+          document.getElementById("results").innerHTML = "<li>No similar verses found with the current filters.</li>";
+          return;
+        }
+        
+        // Filter results by score threshold
+        const filteredData = data.filter(d => d.score >= scoreThreshold);
+        
+        if (filteredData.length === 0) {
+          document.getElementById("results").innerHTML = "<li>No verses found with similarity score above the threshold.</li>";
+          return;
+        }
+        
+        const resultsHtml = filteredData.map(d => {
+          return `
+            <li>
+              <b>Surah ${d.surah_name}, Verse ${d.verse_id}</b> <i class="score">(score: ${d.score.toFixed(4)})</i>
+              <div class="arabic-text">${d.text}</div>
+              <div>${d.translation}</div>
+            </li>
+          `;
+        }).join('');
+        document.getElementById("results").innerHTML = resultsHtml;
+      } catch (error) {
+        console.error("Error searching for similar verses:", error);
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("results").innerHTML = 
+          `<li>Error communicating with the API server: ${error.message}</li>`;
         return;
       }
-      
-      // Filter results by score threshold
-      const filteredData = data.filter(d => d.score >= scoreThreshold);
-      
-      if (filteredData.length === 0) {
-        document.getElementById("results").innerHTML = "<li>No verses found with similarity score above the threshold.</li>";
-        return;
-      }
-      
-      const resultsHtml = filteredData.map(d => {
-        return `
-          <li>
-            <b>Surah ${d.surah_name}, Verse ${d.verse_id}</b> <i class="score">(score: ${d.score.toFixed(4)})</i>
-            <div class="arabic-text">${d.text}</div>
-            <div>${d.translation}</div>
-          </li>
-        `;
-      }).join('');
-      document.getElementById("results").innerHTML = resultsHtml;
     }
   </script>
 </body>
