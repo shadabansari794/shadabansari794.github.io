@@ -150,7 +150,7 @@
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         // Load all surahs
-        const surahRes = await fetch("http://localhost:8000/surahs");
+        const surahRes = await fetch("https://shadabansari794-github-io-1.onrender.com/surahs");
         const surahs = await surahRes.json();
         
         if (!Array.isArray(surahs)) {
@@ -187,7 +187,7 @@
         }
         
         // Fetch verses for this surah
-        const res = await fetch(`http://localhost:8000/verses?surah_id=${surahId}`);
+        const res = await fetch(`https://shadabansari794-github-io-1.onrender.com/verses?surah_id=${surahId}`);
         const verses = await res.json();
         
         if (!Array.isArray(verses)) {
@@ -234,7 +234,7 @@
       const scoreThreshold = parseFloat(document.getElementById("scoreThreshold").value);
       
       document.getElementById("loading").style.display = "block";
-      const res = await fetch("http://localhost:8000/search", {
+      const res = await fetch("https://shadabansari794-github-io-1.onrender.com/search", {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
